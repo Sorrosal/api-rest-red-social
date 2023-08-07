@@ -1,11 +1,9 @@
 // Importar dependencias
 const jwt = require("jwt-simple");
 const moment = require("moment");
-const user = require("../models/user");
 
 // Clave secreta
 const secret = "CLAVE_SECRETA_del_proyecto_DE_LA_RED_soCIAL_987987";
-
 
 // Crear una función para generar tokens
 const createToken = (user) => {
@@ -16,7 +14,7 @@ const createToken = (user) => {
         nick: user.nick,
         email: user.email,
         role: user.role,
-        imagen: user.image,
+        image: user.image,
         iat: moment().unix(),
         exp: moment().add(30, "days").unix()
     };
