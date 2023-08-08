@@ -4,10 +4,13 @@ const FollowController = require("../controllers/follow");
 const check = require("../middlewares/auth");
 
 // Definir rutas
-router.get("/prueba-follow", FollowController.pruebaFollow);
-router.get("/following/:id?/:page?", check.auth, FollowController.following);
-router.get("/followers/:id?/:page?", check.auth, FollowController.followers);
 
+// RUTAS GET
+router.get("/prueba-follow", FollowController.pruebaFollow);
+router.get("/followers/:id?/:page?", check.auth, FollowController.followers);
+router.get("/following/:id?/:page?", check.auth, FollowController.following);
+
+// RUTAS POST
 router.post("/save", check.auth, FollowController.save);
 router.delete("/unfollow/:id", check.auth, FollowController.unfollow);
 

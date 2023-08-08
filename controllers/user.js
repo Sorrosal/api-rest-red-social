@@ -1,11 +1,18 @@
-// Importar dependencias y modulos
+// Importar modelos
 const User = require("../models/user");
-const bcrypt = require("bcrypt");
+const Follow = require("../models/follow");
+const Publication = require("../models/publication");
+
+// Importar servicios
 const jwt = require("../services/jwt");
+const followService = require("../services/followService");
+
+// Importar dependencias
+const bcrypt = require("bcrypt");
 const mongoosePagination = require("mongoose-pagination");
 const fs = require("fs");
 const path = require("path");
-const followService = require("../services/followService");
+
 
 const pruebaUser = (req, res) => {
     return res.status(200).send({
@@ -17,7 +24,6 @@ const pruebaUser = (req, res) => {
 const register = (req, res) => {
     // Recoger datos de la peticion
     let params = req.body;
-
     // Comprobar que me llegan bien (+validacion)
     if (!params.name || !params.email || !params.password || !params.nick) {
         return res.status(400).json({
@@ -25,7 +31,6 @@ const register = (req, res) => {
             message: "Faltan datos por enviar"
         });
     }
-
     // Control usuarios duplicados
     User.find({
         $or: [
@@ -34,25 +39,20 @@ const register = (req, res) => {
         ]
     }).exec(async (error, users) => {
         if (error) return res.status(500).json({ status: "error", message: "Error en la consulta de usuarios" })
-
         if (users && users.length >= 1) {
             return res.status(200).send({
                 status: "success",
                 message: "El usuario ya existe"
             });
         }
-
         // Cifrar contraseña
         let pwd = await bcrypt.hash(params.password, 10);
         params.password = pwd;
-
         // Crear objeto usuario
         let user_to_save = new User(params);
-
         // Guardar usuario en la bbdd
         user_to_save.save((error, userStored) => {
             if (error || !userStored) return res.status(500).send({ status: "error", message: "Error al guardar el usuario" })
-
             if (userStored) {
                 // Devolver resultado
                 return res.status(200).json({
@@ -67,7 +67,6 @@ const register = (req, res) => {
 const login = (req, res) => {
     // Recoger parámetros body
     let params = req.body;
-
     if (!params.email || !params.password) {
         return res.status(400).send({
             status: "error",
@@ -82,20 +81,16 @@ const login = (req, res) => {
                 status: "error",
                 message: "No existe el usuario"
             });
-
             // Comprobar su contraseña
             let pwd = bcrypt.compareSync(params.password, user.password);
-
             if (!pwd) {
                 return res.status(400).send({
                     status: "error",
                     message: "No te has identificado correctamente"
                 });
             }
-
             // Conseguir Token
             const token = jwt.createToken(user);
-
             // Devolver Datos del usuario
             return res.status(200).send({
                 status: "success",
@@ -108,13 +103,11 @@ const login = (req, res) => {
                 token
             })
         });
-
 }
 
 const profile = (req, res) => {
     // Recibir el parámetro del id de usuario por la url
     const id = req.params.id;
-
     // Consulta para sacar los datos del usuario
     User.findById(id)
         .select({ password: 0, role: 0 })
@@ -125,11 +118,9 @@ const profile = (req, res) => {
                     messagge: "El usuario no existe o hay un error"
                 });
             }
-
             // Info de seguimiento
             const followInfo = await followService.followThisUser(req.user.id, id);
             // Devolver el resultado
-
             return res.status(200).send({
                 status: "success",
                 user: userProfile,
@@ -137,7 +128,6 @@ const profile = (req, res) => {
                 follower: followInfo.following,
             });
         });
-
 }
 
 const list = (req, res) => {
@@ -147,11 +137,10 @@ const list = (req, res) => {
         page = req.params.page;
     }
     page = parseInt(page);
-
     // Consulta con mongoose paginate
     let itemsPerPage = 5;
 
-    User.find().sort('_id').paginate(page, itemsPerPage, (error, users, total) => {
+    User.find().select("-password -email -role -__v").sort('_id').paginate(page, itemsPerPage, (error, users, total) => {
         if (error || !users) {
             return res.status(404).send({
                 status: "error",
@@ -177,13 +166,11 @@ const update = (req, res) => {
     // Recoger info del usuario a actualizar
     let userIdentity = req.user;
     let userToUpdate = req.body;
-
     // Eliminar campos sobrantes
     delete userToUpdate.iat;
     delete userToUpdate.exp;
     delete userToUpdate.role;
     delete userToUpdate.image;
-
     // Comprobar si el usuario ya existe
     User.find({
         $or: [
@@ -204,18 +191,16 @@ const update = (req, res) => {
                 message: "El usuario ya existe"
             });
         }
-
         // Si me llega la password cifrarla
         if (userToUpdate.password) {
             let pwd = await bcrypt.hash(userToUpdate.password, 10);
             userToUpdate.password = pwd;
+        } else {
+            delete userToUpdate.password;
         }
-
         // Buscar y actualizar
         User.findByIdAndUpdate({ _id: userIdentity.id }, userToUpdate, { new: true }, (error, userUpdated) => {
-
             if (error || !userUpdated) return res.status(500).send({ status: "error", message: "Error al actualizar el usuario" })
-
             return res.status(200).send({
                 status: "success",
                 message: "Método de actualizar usuario",
@@ -233,28 +218,23 @@ const upload = (req, res) => {
             message: "Petición no incluye la imagen"
         });
     }
-
     // Conseguir el nombre del archivo
     let image = req.file.originalname;
-
     // Sacar extension del archivo
     const imageSplit = image.split("\.");
     const extension = imageSplit[1];
-
     // Comprobar extension
     // Si no es correcta, borrar archivo
     if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "gif") {
         // Borrar archivo subido
         const filePath = req.file.path;
         const fileDeleted = fs.unlinkSync(filePath);
-
         // Devolver respuesta negativa
         return res.status(400).send({
             status: "error",
             message: "Extensión del fichero inválida"
         });
     }
-
     //Si es correcta guardar imagen en bbdd
     User.findOneAndUpdate({ _id: req.user.id }, { image: req.file.filename }, { new: true }, (error, userUpdated) => {
         if (error || !userUpdated) {
@@ -270,33 +250,51 @@ const upload = (req, res) => {
             file: req.file,
         });
     });
-
 }
 
 const avatar = (req, res) => {
     // Sacar el parámetro de la url
     const file = req.params.file;
-
     // Montar el path real de la imagen
     const filePath = "./uploads/avatars/" + file;
-
     // Comprobar que existe
     fs.stat(filePath, (error, exists) => {
         if (!exists) return res.status(404).send({ status: "error", message: "No existe la imagen" });
-
         // Devolver un file
         return res.sendFile(path.resolve(filePath));
     });
 }
 
+const counters = async (req, res) => {
+    let userId = req.user.id;
+    if (req.params.id) userId = req.params.id
+    try {
+        const following = await Follow.count({ "user": userId });
+        const followed = await Follow.count({ "followed": userId });
+        const publications = await Publication.count({ "user": userId });
+
+        return res.status(200).send({
+            userId,
+            following: following,
+            followed: followed,
+            publications: publications
+        });
+    } catch (error) {
+        return res.status(500).send({
+            status: "error",
+            message: "Error en el método de contar"
+        });
+    }
+}
 // Exportar acciones
 module.exports = {
+    avatar,
+    counters,
     register,
-    login,
-    pruebaUser,
-    profile,
     list,
+    login,
+    profile,
+    pruebaUser,
     update,
-    upload,
-    avatar
+    upload
 }

@@ -15,14 +15,11 @@ exports.auth = (req, res, next) => {
             messagge: "La petición no tiene la cabecera de autenticación"
         });
     }
-
     // Limpiar token
     let token = req.headers.authorization.replace(/['"]+/g, '');
-
     // Decodificar el token
     try {
         let payload = jwt.decode(token, secret);
-
         // Comprobar expiración del token
         if (payload.exp <= moment().unix()) {
             return res.status(404).send({
@@ -40,7 +37,6 @@ exports.auth = (req, res, next) => {
             error
         });
     }
-
     // Pasar a ejecucion de accion
     next();
 }

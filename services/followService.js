@@ -8,17 +8,14 @@ const followUserIds = async (identityUserId) => {
         let following = await Follow.find({ "user": identityUserId })
             .select({ "followed": 1, "_id": 0 })
             .exec();
-
         let followers = await Follow.find({ "followed": identityUserId })
             .select({ "followed": 1, "_id": 0 })
             .exec();
-
         // Procesar array de identificadores
         let followingClean = [];
         following.forEach(follow => {
             followingClean.push(follow.followed);
         });
-
         let followersClean = [];
         followers.forEach(follow => {
             followersClean.push(follow.user);
@@ -48,8 +45,6 @@ const followThisUser = async (identityUserId, profileUserId) => {
         follower
     }
 }
-
-
 
 module.exports = {
     followUserIds,
