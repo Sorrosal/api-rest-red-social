@@ -5,6 +5,7 @@ const jwt = require("../services/jwt");
 const mongoosePagination = require("mongoose-pagination");
 const fs = require("fs");
 const path = require("path");
+const followService = require("../services/followService");
 
 const pruebaUser = (req, res) => {
     return res.status(200).send({
@@ -117,18 +118,23 @@ const profile = (req, res) => {
     // Consulta para sacar los datos del usuario
     User.findById(id)
         .select({ password: 0, role: 0 })
-        .exec((error, userProfile) => {
+        .exec(async (error, userProfile) => {
             if (error || !userProfile) {
                 return res.status(404).send({
                     status: "error",
                     messagge: "El usuario no existe o hay un error"
                 });
             }
+
+            // Info de seguimiento
+            const followInfo = await followService.followThisUser(req.user.id, id);
             // Devolver el resultado
-            // Posteriormente: devolver informacion de follows
+
             return res.status(200).send({
                 status: "success",
-                user: userProfile
+                user: userProfile,
+                following: followInfo.following,
+                follower: followInfo.following,
             });
         });
 
@@ -160,7 +166,9 @@ const list = (req, res) => {
             page,
             itemsPerPage,
             total,
-            pages: Math.ceil(total / itemsPerPage)
+            pages: Math.ceil(total / itemsPerPage),
+            userFollowing: followService.followUserIds.following,
+            userFollowed: followService.followUserIds.followers
         });
     });
 }
@@ -204,7 +212,7 @@ const update = (req, res) => {
         }
 
         // Buscar y actualizar
-        User.findByIdAndUpdate(userIdentity.id, userToUpdate, { new: true }, (error, userUpdated) => {
+        User.findByIdAndUpdate({ _id: userIdentity.id }, userToUpdate, { new: true }, (error, userUpdated) => {
 
             if (error || !userUpdated) return res.status(500).send({ status: "error", message: "Error al actualizar el usuario" })
 
@@ -248,7 +256,7 @@ const upload = (req, res) => {
     }
 
     //Si es correcta guardar imagen en bbdd
-    User.findOneAndUpdate(req.user.id, { image: req.file.filename }, { new: true }, (error, userUpdated) => {
+    User.findOneAndUpdate({ _id: req.user.id }, { image: req.file.filename }, { new: true }, (error, userUpdated) => {
         if (error || !userUpdated) {
             return res.status(500).send({
                 status: "error",
