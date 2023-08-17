@@ -1,26 +1,27 @@
+// Importar modulos
+const fs = require("fs");
+const path = require("path");
+
 // Importar modelos
 const Publication = require("../models/publication");
 
 // Importar servicios
 const followService = require("../services/followService");
 
-// Importar dependencias
-const path = require("path");
-const fs = require("fs");
-
+// Acciones de prueba
 const pruebaPublication = (req, res) => {
     return res.status(200).send({
         message: "Mensaje enviado desde: controllers/publication.js"
     });
 }
 
-// Guardar publicación
+// Guardar publicacion
 const save = (req, res) => {
     // Recoger datos del body
     const params = req.body;
 
-    // Si no me llegan dar respuesta negativa
-    if (!params.text) return res.status(400).send({ status: "error", "message": "Debes enviar el texto de la publicación" });
+    // SI no me llegan dar respuesta negativa
+    if (!params.text) return res.status(400).send({ status: "error", "message": "Debes enviar el texto de la publicacion." });
 
     // Crear y rellenar el objeto del modelo
     let newPublication = new Publication(params);
@@ -28,8 +29,10 @@ const save = (req, res) => {
 
     // Guardar objeto en bbdd
     newPublication.save((error, publicationStored) => {
-        if (error || !publicationStored) return res.status(400).send({ status: "error", "message": "No se ha guardado la publicación" });
 
+        if (error || !publicationStored) return res.status(400).send({ status: "error", "message": "No se ha guardado la publicación." });
+
+        // Devolver respuesta
         return res.status(200).send({
             status: "success",
             message: "Publicación guardada",
@@ -45,40 +48,57 @@ const detail = (req, res) => {
 
     // Find con la condicion del id
     Publication.findById(publicationId, (error, publicationStored) => {
-        if (error || !publicationStored) return res.status(404).send({ status: "error", "message": "No se ha encontrado la publicación" });
+
+        if (error || !publicationStored) {
+            return res.status(404).send({
+                status: "error",
+                message: "No existe la publicacion"
+            })
+        }
+
         // Devolver respuesta
         return res.status(200).send({
             status: "success",
-            message: "Mostrar publicación",
-            publicationStored
+            message: "Mostrar publicacion",
+            publication: publicationStored
         });
     });
 }
 
 // Eliminar publicaciones
 const remove = (req, res) => {
-    // Sacar el id de la publicación a eliminar
+    // Sacar el id del publicacion a eliminar
     const publicationId = req.params.id;
 
     // Find y luego un remove
     Publication.find({ "user": req.user.id, "_id": publicationId }).remove(error => {
-        if (error) return res.status(500).send({ status: "error", "message": "No se ha eliminado la publicación" });
+        if (error) {
+            return res.status(500).send({
+                status: "error",
+                message: "No se ha eliminado la publicacion"
+            });
+        }
+
         // Devolver respuesta
         return res.status(200).send({
             status: "success",
-            message: "Eliminar publicación",
+            message: "Eliminar publicacion",
             publication: publicationId
         });
     });
+
 }
 
-// Listar publicaciones de un usuario
+// listar publicaciones de un usuario
 const user = (req, res) => {
     // Sacar el id de usuario
     const userId = req.params.id;
-    // Controlar la página
+
+    // Controlar la pagina
     let page = 1;
+
     if (req.params.page) page = req.params.page
+
     const itemsPerPage = 5;
 
     // Find, populate, ordenar, paginar
@@ -86,12 +106,14 @@ const user = (req, res) => {
         .sort("-created_at")
         .populate('user', '-password -__v -role -email')
         .paginate(page, itemsPerPage, (error, publications, total) => {
+
             if (error || !publications || publications.length <= 0) {
                 return res.status(404).send({
                     status: "error",
                     message: "No hay publicaciones para mostrar"
                 });
             }
+
             // Devolver respuesta
             return res.status(200).send({
                 status: "success",
@@ -99,56 +121,17 @@ const user = (req, res) => {
                 page,
                 total,
                 pages: Math.ceil(total / itemsPerPage),
-                publications
-            });
-        });
-}
+                publications,
 
-// Listar todas las publicaciones
-const feed = async (req, res) => {
-    // Sacar página actual
-    let page = 1;
-    if (req.params.page) page = req.params.page;
-    // Establecer numero de elementos por pagina
-    let itemsPerPage = 5;
-    // Sacar un array de identificadores de usuarios que yo sigo como usuario logueado
-    try {
-        const myFollows = await followService.followUserIds(req.user.id);
-        // Find a publicaciones in, ordenar, popular, paginar
-        const publications = Publication.find({ user: myFollows.following })
-            .populate("user", "-password -role -__v -email")
-            .sort("-created_at")
-            .paginate(page, itemsPerPage, (error, publications, total) => {
-                if (error || !publications) {
-                    return res.status(500).send({
-                        status: "error",
-                        message: "No hay publicaciones para mostrar"
-                    });
-                }
-                // Devolver respuesta
-                return res.status(200).send({
-                    status: "success",
-                    message: "Feed de publicaciones",
-                    following: myFollows.following,
-                    total,
-                    page,
-                    itemsPerPage,
-                    pages: Math.ceil(total / itemsPerPage),
-                    publications
-                });
             });
-    } catch (error) {
-        return res.status(500).send({
-            status: "error",
-            message: "No se han listado las publicaciones del feed"
         });
-    }
 }
 
 // Subir ficheros
 const upload = (req, res) => {
-    // Recoger publication id
+    // Sacar publication id
     const publicationId = req.params.id;
+
     // Recoger el fichero de imagen y comprobar que existe
     if (!req.file) {
         return res.status(404).send({
@@ -159,12 +142,14 @@ const upload = (req, res) => {
 
     // Conseguir el nombre del archivo
     let image = req.file.originalname;
-    // Sacar extension del archivo
+
+    // Sacar la extension del archivo
     const imageSplit = image.split("\.");
     const extension = imageSplit[1];
+
     // Comprobar extension
-    // Si no es correcta, borrar archivo
     if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "gif") {
+
         // Borrar archivo subido
         const filePath = req.file.path;
         const fileDeleted = fs.unlinkSync(filePath);
@@ -172,47 +157,111 @@ const upload = (req, res) => {
         // Devolver respuesta negativa
         return res.status(400).send({
             status: "error",
-            message: "Extensión del fichero inválida"
+            message: "Extensión del fichero invalida"
         });
     }
-    //Si es correcta guardar imagen en bbdd
+
+    // Si si es correcta, guardar imagen en bbdd
     Publication.findOneAndUpdate({ "user": req.user.id, "_id": publicationId }, { file: req.file.filename }, { new: true }, (error, publicationUpdated) => {
         if (error || !publicationUpdated) {
             return res.status(500).send({
                 status: "error",
-                message: "Error en la subida de la publicacion"
-            });
+                message: "Error en la subida del avatar"
+            })
         }
+
         // Devolver respuesta
         return res.status(200).send({
             status: "success",
             publication: publicationUpdated,
-            file: req.file
+            file: req.file,
         });
     });
+
 }
 
-// Devolver archivos multimedia
+// Devolver archivos multimedia imagenes
 const media = (req, res) => {
-    // Sacar el parámetro de la url
+    // Sacar el parametro de la url
     const file = req.params.file;
+
     // Montar el path real de la imagen
     const filePath = "./uploads/publications/" + file;
+
     // Comprobar que existe
     fs.stat(filePath, (error, exists) => {
-        if (!exists) return res.status(404).send({ status: "error", message: "No existe la imagen" });
+
+        if (!exists) {
+            return res.status(404).send({
+                status: "error",
+                message: "No existe la imagen"
+            });
+        }
+
         // Devolver un file
         return res.sendFile(path.resolve(filePath));
     });
+
 }
+
+// Listar todas las publicaciones (FEED)
+const feed = async (req, res) => {
+    // Sacar la pagina actual
+    let page = 1;
+
+    if (req.params.page) {
+        page = req.params.page;
+    }
+
+    // Establecer numero de elementos por pagina
+    let itemsPerPage = 5;
+
+    // Sacar un array de identificadores de usuarios que yo sigo como usuario logueado
+    try {
+        const myFollows = await followService.followUserIds(req.user.id);
+
+        // Find a publicaciones in, ordenar, popular, paginar
+        const publications = Publication.find({ user: myFollows.following })
+            .populate("user", "-password -role -__v -email")
+            .sort("-created_at")
+            .paginate(page, itemsPerPage, (error, publications, total) => {
+
+                if(error || !publications){
+                    return res.status(500).send({
+                        status: "error",
+                        message: "No hay publicaciones para mostrar",
+                    });
+                }
+
+                return res.status(200).send({
+                    status: "success",
+                    message: "Feed de publicaciones",
+                    following: myFollows.following,
+                    total,
+                    page,
+                    pages: Math.ceil(total / itemsPerPage),
+                    publications
+                });
+            });
+
+    } catch (error) {
+
+        return res.status(500).send({
+            status: "error",
+            message: "Error al obtener usuarios que sigues",
+        });
+    }
+
+}
+
 // Exportar acciones
 module.exports = {
-    feed,
-    detail,
-    media,
     pruebaPublication,
-    remove,
     save,
+    detail,
+    remove,
+    user,
     upload,
-    user
+    media,
+    feed
 }

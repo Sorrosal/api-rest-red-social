@@ -19,7 +19,7 @@ const uploads = multer({ storage });
 
 // RUTAS GET
 router.get("/detail/:id", check.auth, PublicationController.detail);
-router.get("/feed:page?", check.auth, PublicationController.feed);
+router.get("/feed/:page?", check.auth, PublicationController.feed);
 router.get("/media/:file", PublicationController.media);
 router.get("/prueba-publication", PublicationController.pruebaPublication);
 router.get("/user/:id/:page?", check.auth, PublicationController.user);
